@@ -1,0 +1,14 @@
+services:
+  - type: web
+    name: linkkeeper-api
+    runtime: docker
+    plan: free
+    autoDeploy: true
+    healthCheckPath: /api/health
+    envVars:
+      - key: LINK_KEEPER_HOST
+        value: 0.0.0.0
+      - key: LINK_KEEPER_PORT
+        value: 8792
+      - key: LINK_KEEPER_MAX_BOOKMARKS
+        value: "300"

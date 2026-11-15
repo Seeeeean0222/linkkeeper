@@ -1,0 +1,11 @@
+FROM python:3.12-slim
+
+WORKDIR /app
+COPY . .
+
+ENV LINK_KEEPER_HOST=0.0.0.0
+ENV LINK_KEEPER_PORT=8792
+
+EXPOSE 8792
+
+CMD ["python3", "run.py"]

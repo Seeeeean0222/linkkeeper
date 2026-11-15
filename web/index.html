@@ -1,0 +1,651 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="color-scheme" content="light">
+  <meta name="theme-color" content="#4655d8">
+  <meta name="description" content="拾链 LinkKeeper：浏览器书签健康检查、重复整理与导出工具。">
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="icon" href="icon.svg" type="image/svg+xml">
+  <title>拾链 LinkKeeper · 书签健康体检</title>
+  <style>
+    :root {
+      --ink: #1b2434;
+      --muted: #6f7784;
+      --paper: #f5f2e9;
+      --card: #fffdf7;
+      --blue: #4655d8;
+      --blue-soft: #e7e8ff;
+      --orange: #e77944;
+      --green: #2d8b68;
+      --red: #d44f4f;
+      --line: rgba(27,36,52,.12);
+      --shadow: 0 24px 60px rgba(36,42,66,.09);
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      color: var(--ink);
+      background:
+        radial-gradient(circle at 85% 8%, rgba(70,85,216,.14), transparent 28rem),
+        radial-gradient(circle at 8% 55%, rgba(231,121,68,.11), transparent 24rem),
+        linear-gradient(rgba(27,36,52,.026) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(27,36,52,.026) 1px, transparent 1px),
+        var(--paper);
+      background-size: auto, auto, 25px 25px, 25px 25px, auto;
+      font: 14px/1.55 "PingFang SC","Noto Sans CJK SC",sans-serif;
+    }
+    button, input, textarea { font: inherit; }
+    button { cursor: pointer; }
+    .shell { width: min(1220px, calc(100% - 36px)); margin: 0 auto; }
+    header {
+      display:flex; align-items:center; justify-content:space-between; gap:22px;
+      padding:24px 0; border-bottom:1px solid var(--line);
+    }
+    .brand { display:flex; align-items:center; gap:12px; }
+    .logo {
+      width:42px; height:42px; border-radius:13px; display:grid; place-items:center;
+      color:#fff; background:var(--blue); font:700 22px/1 "Songti SC",serif;
+      box-shadow:0 10px 24px rgba(70,85,216,.25);
+    }
+    .brand b { display:block; font:700 20px/1 "Songti SC",serif; letter-spacing:2px; }
+    .brand small { color:var(--muted); font-size:8px; letter-spacing:3px; }
+    .privacy {
+      display:flex; align-items:center; gap:7px; color:var(--muted); font-size:11px;
+      border:1px solid var(--line); border-radius:99px; padding:8px 12px; background:rgba(255,253,247,.72);
+    }
+    .privacy i { width:7px; height:7px; border-radius:50%; background:var(--green); }
+    .hero {
+      display:grid; grid-template-columns:1.45fr .65fr; gap:38px; align-items:center;
+      padding:64px 0 42px;
+    }
+    .eyebrow { color:var(--blue); font-size:10px; font-weight:800; letter-spacing:3px; }
+    h1 {
+      margin:15px 0 17px; font:500 clamp(52px,8.5vw,94px)/.94 "Songti SC","STSong",serif;
+      letter-spacing:-6px;
+    }
+    h1 em { color:var(--blue); font-style:italic; }
+    .hero-copy { max-width:680px; color:var(--muted); font-size:17px; }
+    .orbital {
+      width:270px; height:270px; margin:auto; position:relative;
+      border:1px dashed rgba(70,85,216,.28); border-radius:50%;
+    }
+    .orbital::before, .orbital::after {
+      content:""; position:absolute; border-radius:50%; border:1px solid rgba(70,85,216,.12);
+    }
+    .orbital::before { inset:28px; }
+    .orbital::after { inset:70px; background:rgba(70,85,216,.06); }
+    .node {
+      position:absolute; width:34px; height:34px; border-radius:50%; display:grid; place-items:center;
+      color:#fff; font-size:14px; box-shadow:0 9px 20px rgba(35,45,70,.2);
+    }
+    .node.n1 { left:12px; top:84px; background:var(--orange); }
+    .node.n2 { right:32px; top:20px; background:var(--green); }
+    .node.n3 { right:-8px; bottom:62px; background:var(--blue); }
+    .node.n4 { left:72px; bottom:2px; background:#a065c7; }
+    .orbital-core {
+      position:absolute; inset:50% auto auto 50%; transform:translate(-50%,-50%);
+      width:74px; height:74px; border-radius:24px; display:grid; place-items:center;
+      background:var(--card); border:1px solid var(--line); font:700 33px/1 "Songti SC",serif;
+      box-shadow:var(--shadow);
+    }
+    .import-card {
+      border:1px solid var(--line); border-radius:24px; background:rgba(255,253,247,.88);
+      box-shadow:var(--shadow); padding:24px; position:relative; overflow:hidden;
+    }
+    .import-card::after {
+      content:""; position:absolute; width:170px; height:170px; right:-95px; bottom:-100px;
+      border-radius:50%; background:var(--blue-soft);
+    }
+    .dropzone {
+      min-height:184px; border:1.5px dashed rgba(70,85,216,.35); border-radius:17px;
+      background:rgba(231,232,255,.3); display:flex; flex-direction:column; align-items:center;
+      justify-content:center; text-align:center; padding:24px; transition:.18s; position:relative; z-index:1;
+    }
+    .dropzone.drag { background:var(--blue-soft); border-color:var(--blue); transform:scale(.995); }
+    .drop-icon { font-size:35px; color:var(--blue); }
+    .dropzone h2 { margin:10px 0 4px; font:500 23px/1.2 "Songti SC",serif; }
+    .dropzone p { margin:0; color:var(--muted); font-size:11px; }
+    .browse { margin-top:14px; color:var(--blue); font-size:11px; font-weight:700; }
+    #file { display:none; }
+    .paste-area { margin-top:12px; position:relative; z-index:1; }
+    .paste-area textarea {
+      width:100%; min-height:82px; resize:vertical; border:1px solid var(--line); border-radius:12px;
+      background:rgba(255,253,247,.9); color:var(--ink); padding:11px 13px; outline:none; font-size:11px;
+    }
+    .paste-area textarea:focus { border-color:var(--blue); box-shadow:0 0 0 3px rgba(70,85,216,.1); }
+    .import-actions { display:flex; align-items:center; gap:8px; flex-wrap:wrap; margin-top:12px; position:relative; z-index:1; }
+    .btn {
+      border:1px solid var(--line); border-radius:11px; background:transparent; color:var(--ink);
+      min-height:42px; padding:0 15px; font-size:12px; font-weight:700;
+    }
+    .btn.primary { color:#fff; background:var(--blue); border-color:var(--blue); box-shadow:0 10px 22px rgba(70,85,216,.2); }
+    .btn.primary:disabled { opacity:.55; cursor:not-allowed; }
+    .btn.small { min-height:34px; padding:0 11px; font-size:10px; }
+    .selected-count { margin-left:auto; color:var(--muted); font-size:10px; }
+    .progress-card {
+      display:none; margin-top:15px; border:1px solid var(--line); border-radius:17px;
+      background:var(--ink); color:white; padding:20px; position:relative; z-index:1;
+    }
+    .progress-head { display:flex; justify-content:space-between; gap:15px; font-size:11px; }
+    .progress-track { height:5px; margin-top:16px; border-radius:9px; background:rgba(255,255,255,.14); overflow:hidden; }
+    .progress-fill { width:0; height:100%; border-radius:inherit; background:#9ca4ff; transition:.3s; }
+    .result-section { display:none; margin:24px 0 50px; }
+    .result-section.visible { display:block; animation:rise .25s ease both; }
+    @keyframes rise { from { opacity:0; transform:translateY(8px); } }
+    .result-grid { display:grid; grid-template-columns:260px 1fr; gap:17px; align-items:stretch; }
+    .health-card {
+      border-radius:24px; padding:25px; background:var(--ink); color:white;
+      display:flex; flex-direction:column; justify-content:space-between; min-height:222px;
+    }
+    .health-ring {
+      --score:0;
+      width:126px; aspect-ratio:1; margin:2px auto 8px; border-radius:50%; position:relative;
+      background:conic-gradient(#9ca4ff calc(var(--score)*1%), rgba(255,255,255,.12) 0);
+      display:grid; place-items:center;
+    }
+    .health-ring::before { content:""; position:absolute; inset:9px; border-radius:50%; background:var(--ink); }
+    .health-ring b { position:relative; font:500 38px/1 "Times New Roman",serif; }
+    .health-card p { margin:0; text-align:center; color:rgba(255,255,255,.6); font-size:10px; }
+    .summary-cards { display:grid; grid-template-columns:repeat(4,1fr); gap:10px; }
+    .summary-card {
+      border:1px solid var(--line); border-radius:17px; background:rgba(255,253,247,.86); padding:18px;
+      min-width:0;
+    }
+    .summary-card span { color:var(--muted); font-size:10px; }
+    .summary-card b { display:block; margin-top:8px; font:500 35px/1 "Songti SC",serif; }
+    .summary-card small { display:block; margin-top:8px; color:var(--muted); font-size:9px; }
+    .domains {
+      grid-column:1/-1; border:1px solid var(--line); border-radius:17px; background:rgba(255,253,247,.86);
+      padding:17px 20px;
+    }
+    .domain-row { display:grid; grid-template-columns:minmax(90px,150px) 1fr 35px; gap:12px; align-items:center; margin-top:8px; }
+    .domain-row span { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; font-size:10px; }
+    .domain-track { height:7px; border-radius:10px; background:#e9e6dc; overflow:hidden; }
+    .domain-track i { display:block; height:100%; background:var(--blue); border-radius:inherit; }
+    .domain-row b { text-align:right; color:var(--muted); font-size:10px; font-weight:500; }
+    .toolbar {
+      display:flex; align-items:center; gap:9px; flex-wrap:wrap; padding:20px 0 12px;
+    }
+    .filters { display:flex; gap:4px; background:#e9e5db; padding:4px; border-radius:12px; }
+    .filter { border:0; background:transparent; padding:8px 11px; border-radius:9px; color:var(--muted); font-size:10px; }
+    .filter.active { background:var(--card); color:var(--ink); box-shadow:0 2px 8px rgba(20,25,40,.08); }
+    .search {
+      margin-left:auto; width:min(280px,100%); border:1px solid var(--line); border-radius:11px;
+      padding:10px 12px; background:var(--card); outline:none; font-size:11px;
+    }
+    .search:focus { border-color:var(--blue); box-shadow:0 0 0 3px rgba(70,85,216,.1); }
+    .table-wrap {
+      border:1px solid var(--line); border-radius:18px; overflow:hidden; background:rgba(255,253,247,.9);
+    }
+    table { width:100%; border-collapse:collapse; }
+    th {
+      text-align:left; color:var(--muted); font-size:9px; letter-spacing:1.2px; text-transform:uppercase;
+      padding:13px 15px; border-bottom:1px solid var(--line);
+    }
+    td { padding:13px 15px; border-bottom:1px solid rgba(27,36,52,.075); vertical-align:middle; font-size:11px; }
+    tr:last-child td { border-bottom:0; }
+    .link-title { font-weight:700; overflow-wrap:anywhere; }
+    .link-url { display:block; margin-top:4px; max-width:550px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; color:var(--muted); font:9px/1.4 ui-monospace,Menlo,monospace; }
+    .state { display:inline-flex; align-items:center; gap:6px; padding:5px 8px; border-radius:99px; white-space:nowrap; font-size:9px; }
+    .state::before { content:""; width:6px; height:6px; border-radius:50%; background:currentColor; }
+    .state.ok, .state.redirect { color:#24705a; background:#e2f1e9; }
+    .state.protected, .state.blocked { color:#8b6b24; background:#f6edcf; }
+    .state.pending { color:#4655d8; background:#e7e8ff; }
+    .state.missing, .state.client_error, .state.server_error, .state.timeout, .state.unreachable, .state.tls_error, .state.error { color:#a9463f; background:#f8e5e1; }
+    .duplicate-tag { display:inline-block; margin-left:6px; color:var(--blue); background:var(--blue-soft); border-radius:99px; padding:3px 6px; font-size:8px; }
+    .detail { color:var(--muted); font-size:9px; }
+    .empty-rows { padding:38px 15px; text-align:center; color:var(--muted); }
+    .empty-rows b { display:block; color:var(--ink); font:500 24px/1.2 "Songti SC",serif; margin-bottom:7px; }
+    .toast {
+      position:fixed; left:50%; bottom:26px; transform:translate(-50%,18px); padding:11px 16px;
+      border-radius:99px; background:var(--ink); color:white; opacity:0; transition:.2s; z-index:20;
+      font-size:11px; pointer-events:none;
+    }
+    .toast.show { opacity:1; transform:translate(-50%,0); }
+    footer { display:flex; justify-content:space-between; gap:20px; padding:26px 0 42px; color:var(--muted); font-size:9px; border-top:1px solid var(--line); }
+    @media (max-width:900px) {
+      .hero { grid-template-columns:1fr; gap:24px; }
+      .hero-visual { display:none; }
+      .result-grid { grid-template-columns:1fr; }
+      .health-card { min-height:170px; }
+      .summary-cards { grid-template-columns:repeat(2,1fr); }
+    }
+    @media (max-width:620px) {
+      .shell { width:min(100% - 20px,1220px); }
+      h1 { font-size:53px; letter-spacing:-4px; }
+      header { align-items:flex-start; }
+      .privacy span { display:none; }
+      .import-card { padding:15px; }
+      .summary-cards { gap:7px; }
+      .summary-card { padding:13px; }
+      .summary-card b { font-size:29px; }
+      .toolbar { align-items:stretch; }
+      .search { margin-left:0; width:100%; }
+      th:nth-child(3),td:nth-child(3),th:nth-child(4),td:nth-child(4) { display:none; }
+      .link-url { max-width:230px; }
+      footer { flex-direction:column; }
+    }
+  </style>
+</head>
+<body>
+  <div class="shell">
+    <header>
+      <div class="brand"><div class="logo">链</div><div><b>拾链</b><small>LINK KEEPER</small></div></div>
+      <div class="privacy"><i></i><span id="mode-status">正在检测在线服务</span></div>
+    </header>
+
+    <main>
+      <section class="hero">
+        <div>
+          <div class="eyebrow">BOOKMARK HEALTH CHECK</div>
+          <h1>让收藏，<br><em>重新可抵达。</em></h1>
+          <p class="hero-copy">导入浏览器书签，一次性找出生效链接、失效页面、重定向和重复收藏。清理跟踪参数，再把健康书签带回浏览器。</p>
+        </div>
+        <div class="hero-visual">
+          <div class="orbital">
+            <div class="orbital-core">存</div>
+            <i class="node n1">↗</i><i class="node n2">✓</i><i class="node n3">?</i><i class="node n4">↻</i>
+          </div>
+        </div>
+      </section>
+
+      <section class="import-card" id="import-card">
+        <div class="dropzone" id="dropzone">
+          <div class="drop-icon">⌁</div>
+          <h2>把书签拖到这里</h2>
+          <p>支持 Chrome、Edge、Firefox、Safari 导出的 HTML 文件</p>
+          <label class="browse" for="file">或选择书签文件</label>
+          <input id="file" type="file" accept=".html,.htm,text/html">
+        </div>
+        <div class="paste-area">
+          <textarea id="paste" placeholder="也可以粘贴网址，每行一条：&#10;https://example.com/article&#10;某篇文章 | https://example.org/post"></textarea>
+        </div>
+        <div class="import-actions">
+          <button class="btn primary" id="start" disabled>开始体检</button>
+          <button class="btn" id="parse-paste">读取粘贴内容</button>
+          <button class="btn" id="sample">试用示例</button>
+          <span class="selected-count" id="selected-count">尚未选择书签</span>
+        </div>
+        <div class="progress-card" id="progress-card">
+          <div class="progress-head"><span id="progress-label">正在准备扫描</span><b id="progress-value">0%</b></div>
+          <div class="progress-track"><i class="progress-fill" id="progress-fill"></i></div>
+        </div>
+      </section>
+
+      <section class="result-section" id="results">
+        <div class="result-grid">
+          <article class="health-card">
+            <div class="eyebrow" style="color:rgba(255,255,255,.55)">可抵达指数</div>
+            <div class="health-ring" id="health-ring"><b id="health-score">--</b></div>
+            <p id="health-caption">检查完成后生成</p>
+          </article>
+          <div class="summary-cards">
+            <article class="summary-card"><span>总计</span><b id="summary-total">0</b><small>导入书签</small></article>
+            <article class="summary-card"><span id="summary-ok-label">正常</span><b id="summary-ok">0</b><small id="summary-ok-note">可立即访问</small></article>
+            <article class="summary-card"><span id="summary-attention-label">需关注</span><b id="summary-attention">0</b><small id="summary-attention-note">失效或服务异常</small></article>
+            <article class="summary-card"><span>重复</span><b id="summary-duplicates">0</b><small>清理跟踪参数后</small></article>
+            <article class="domains" style="grid-column:1/-1">
+              <div class="eyebrow">收藏最多的网站</div>
+              <div id="domains"></div>
+            </article>
+          </div>
+        </div>
+
+        <div class="toolbar">
+          <div class="filters">
+            <button class="filter active" data-filter="all">全部</button>
+            <button class="filter" data-filter="attention">需关注</button>
+            <button class="filter" data-filter="ok">正常</button>
+            <button class="filter" data-filter="protected">受限</button>
+            <button class="filter" data-filter="duplicate">重复</button>
+          </div>
+          <input class="search" id="search" placeholder="搜索标题、域名或文件夹">
+          <button class="btn small" id="export-healthy">导出健康书签</button>
+          <button class="btn small" id="export-all">导出全部</button>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>书签</th><th>状态</th><th>详情</th><th>耗时</th></tr></thead>
+            <tbody id="table-body"></tbody>
+          </table>
+          <div class="empty-rows" id="empty-rows"><b>等待书签体检</b>导入文件后，这里会出现每个链接的健康证据。</div>
+        </div>
+      </section>
+    </main>
+    <footer><span>拾链 LinkKeeper · 原创本地书签整理工具</span><span>公开网页检查，拒绝内网与非 HTTP 地址</span></footer>
+  </div>
+  <div class="toast" id="toast"></div>
+
+  <script src="config.js"></script>
+  <script>
+    const API_BASE = (window.LINK_KEEPER_API || '').replace(/\/+$/, '');
+    let onlineMode = null;
+    let bookmarks = [];
+    let scanResults = [];
+    let summary = null;
+    let activeFilter = 'all';
+    let pollTimer = null;
+    const $ = (selector) => document.querySelector(selector);
+
+    function toast(message) {
+      $('#toast').textContent = message;
+      $('#toast').classList.add('show');
+      clearTimeout(toast.timer);
+      toast.timer = setTimeout(() => $('#toast').classList.remove('show'), 2200);
+    }
+
+    function escapeHtml(value) {
+      return String(value ?? '').replace(/[&<>"']/g, (char) => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[char]));
+    }
+
+    function hostOf(url) {
+      try { return new URL(url).hostname; } catch (_) { return '未知域名'; }
+    }
+
+    function setBookmarks(items, source) {
+      const seen = new Set();
+      bookmarks = items.filter((item) => {
+        if (!item.url || !/^https?:\/\//i.test(item.url)) return false;
+        const key = item.url + '\u0000' + (item.title || '');
+        if (seen.has(key)) return false;
+        seen.add(key);
+        return true;
+      });
+      $('#selected-count').textContent = bookmarks.length ? `${bookmarks.length} 条书签 · ${source}` : '尚未选择书签';
+      $('#start').disabled = !bookmarks.length;
+      toast(bookmarks.length ? `已读取 ${bookmarks.length} 条书签` : '没有找到有效网址');
+    }
+
+    function folderFor(anchor) {
+      const parts = [];
+      let dl = anchor.closest('dl');
+      while (dl) {
+        const parent = dl.parentElement;
+        const h3 = parent && parent.tagName === 'DT' ? parent.querySelector(':scope > h3') : null;
+        if (h3 && h3.textContent.trim()) parts.unshift(h3.textContent.trim());
+        dl = parent ? parent.closest('dl') : null;
+      }
+      return parts.join(' / ');
+    }
+
+    async function importFile(file) {
+      if (!file) return;
+      if (file.size > 5 * 1024 * 1024) return toast('文件超过 5 MB');
+      const documentText = await file.text();
+      const doc = new DOMParser().parseFromString(documentText, 'text/html');
+      const anchors = [...doc.querySelectorAll('a[href]')];
+      const items = anchors.map((anchor) => ({
+        title: anchor.textContent.trim() || anchor.href,
+        url: anchor.getAttribute('href'),
+        folder: folderFor(anchor),
+      }));
+      setBookmarks(items, file.name);
+    }
+
+    function parsePaste() {
+      const rows = $('#paste').value.split(/\r?\n/).map((line) => line.trim()).filter(Boolean).map((line) => {
+        const [title, url] = line.includes('|') ? line.split('|', 2).map((part) => part.trim()) : ['', line];
+        return { title: title || url, url, folder: '粘贴导入' };
+      });
+      setBookmarks(rows, '粘贴导入');
+    }
+
+    async function startScan() {
+      if (!bookmarks.length) return;
+      $('#start').disabled = true;
+      $('#progress-card').style.display = 'block';
+      $('#progress-label').textContent = '正在创建扫描任务';
+      $('#progress-value').textContent = '0%';
+      $('#progress-fill').style.width = '0%';
+      scanResults = [];
+      summary = null;
+      try {
+        if (onlineMode === false) {
+          runLocalAudit();
+          return;
+        }
+        const response = await fetch(`${API_BASE}/api/scans`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ bookmarks }),
+        });
+        const contentType = response.headers.get('Content-Type') || '';
+        if (!response.ok || !contentType.includes('json')) throw new Error('在线检查服务不可用');
+        const data = await response.json();
+        if (!response.ok) throw new Error(data.error || '创建任务失败');
+        onlineMode = true;
+        $('#mode-status').textContent = '在线深检 · 已连接 BFF';
+        pollScan(data.scanId);
+      } catch (error) {
+        onlineMode = false;
+        $('#mode-status').textContent = '本地整理 · 未连接检查服务';
+        toast('在线检查不可用，已切换为本地整理');
+        runLocalAudit();
+      }
+    }
+
+    function pollScan(scanId) {
+      clearTimeout(pollTimer);
+      fetch(`${API_BASE}/api/scans/${scanId}`)
+        .then((response) => response.json().then((data) => ({ response, data })))
+        .then(({ response, data }) => {
+          if (!response.ok) throw new Error(data.error || '读取任务失败');
+          const progress = data.progress || 0;
+          $('#progress-label').textContent = `正在检查 ${data.completed} / ${data.total} 条`;
+          $('#progress-value').textContent = `${progress}%`;
+          $('#progress-fill').style.width = `${progress}%`;
+          if (data.status === 'complete') {
+            scanResults = data.results || [];
+            summary = data.summary;
+            $('#progress-label').textContent = `体检完成 · ${data.total} 条网址`;
+            renderResults();
+            $('#start').disabled = false;
+            return;
+          }
+          if (data.status === 'failed') throw new Error(data.error || '扫描失败');
+          pollTimer = setTimeout(() => pollScan(scanId), 650);
+        })
+        .catch((error) => {
+          toast(error.message);
+          $('#start').disabled = false;
+        });
+    }
+
+    function renderResults() {
+      $('#results').classList.add('visible');
+      $('#health-ring').style.setProperty('--score', summary.healthScore);
+      $('#health-score').textContent = summary.healthScore;
+      $('#health-caption').textContent = onlineMode === false
+        ? '本地结构整理完成 · 未检查 HTTP 状态'
+        : summary.healthScore >= 80 ? '收藏状态很健康' : summary.healthScore >= 55 ? '有一部分链接值得整理' : '建议重点清理失效收藏';
+      $('#summary-total').textContent = summary.total;
+      $('#summary-ok').textContent = summary.healthy;
+      $('#summary-attention').textContent = summary.attention;
+      $('#summary-duplicates').textContent = summary.duplicates;
+      $('#summary-ok-label').textContent = onlineMode === false ? '结构正常' : '正常';
+      $('#summary-ok-note').textContent = onlineMode === false ? 'HTTPS 且无重复' : '可立即访问';
+      $('#summary-attention-label').textContent = onlineMode === false ? '不安全' : '需关注';
+      $('#summary-attention-note').textContent = onlineMode === false ? 'HTTP 明文链接' : '失效或服务异常';
+      const maxDomain = Math.max(1, ...summary.topDomains.map((item) => item.count));
+      $('#domains').innerHTML = summary.topDomains.length ? summary.topDomains.map((item) => `
+        <div class="domain-row"><span>${escapeHtml(item.domain)}</span><i class="domain-track"><i style="width:${item.count / maxDomain * 100}%"></i></i><b>${item.count}</b></div>
+      `).join('') : '<div class="detail">没有足够数据</div>';
+      renderTable();
+    }
+
+    function duplicateSet() {
+      const groups = {};
+      scanResults.forEach((item) => {
+        groups[item.canonicalUrl] = (groups[item.canonicalUrl] || 0) + 1;
+      });
+      return new Set(Object.keys(groups).filter((key) => groups[key] > 1));
+    }
+
+    function renderTable() {
+      const duplicateKeys = duplicateSet();
+      const query = $('#search').value.trim().toLowerCase();
+      const filtered = scanResults.filter((item) => {
+        const attention = onlineMode === false
+          ? item.state === 'client_error'
+          : !['ok','redirect','protected','blocked'].includes(item.state);
+        if (activeFilter === 'attention' && !attention) return false;
+        if (activeFilter === 'ok' && !(onlineMode === false ? item.state === 'pending' : ['ok','redirect'].includes(item.state))) return false;
+        if (activeFilter === 'protected' && item.state !== 'protected') return false;
+        if (activeFilter === 'duplicate' && !duplicateKeys.has(item.canonicalUrl)) return false;
+        if (query && !`${item.title} ${item.url} ${item.folder} ${item.final_url}`.toLowerCase().includes(query)) return false;
+        return true;
+      });
+      $('#table-body').innerHTML = filtered.map((item) => `
+        <tr>
+          <td><span class="link-title">${escapeHtml(item.title)}${duplicateKeys.has(item.canonicalUrl) ? '<span class="duplicate-tag">重复</span>' : ''}</span><a class="link-url" href="${escapeHtml(item.final_url || item.url)}" target="_blank" rel="noreferrer">${escapeHtml(item.url)}</a></td>
+          <td><span class="state ${item.state}">${escapeHtml(item.label)}</span></td>
+          <td><span class="detail">${escapeHtml(item.detail)}${item.redirected ? '<br>重定向到 ' + escapeHtml(hostOf(item.final_url)) : ''}</span></td>
+          <td><span class="detail">${item.elapsed_ms} ms</span></td>
+        </tr>
+      `).join('');
+      $('#empty-rows').style.display = filtered.length ? 'none' : 'block';
+      $('#empty-rows').innerHTML = filtered.length ? '' : '<b>这个筛选下没有链接</b>换一个筛选条件或关键词试试。';
+    }
+
+    async function exportLinks(healthyOnly) {
+      let items = scanResults;
+      if (healthyOnly) {
+        const seen = new Set();
+        items = scanResults.filter((item) => {
+          const eligible = onlineMode === false
+            ? ['pending', 'ok', 'redirect'].includes(item.state)
+            : ['ok', 'redirect'].includes(item.state);
+          if (!eligible || seen.has(item.canonicalUrl)) return false;
+          seen.add(item.canonicalUrl);
+          return true;
+        });
+      }
+      if (!items.length) return toast('没有可导出的链接');
+      const payload = items.map((item) => ({ title: item.title, url: item.final_url || item.url, folder: item.folder || '未分类' }));
+      try {
+        const blob = new Blob([buildBookmarkHtml(payload)], { type: 'text/html;charset=utf-8' });
+        const url = URL.createObjectURL(blob);
+        const anchor = document.createElement('a');
+        anchor.href = url;
+        anchor.download = healthyOnly ? '拾链-健康书签.html' : '拾链-全部书签.html';
+        anchor.click();
+        URL.revokeObjectURL(url);
+        toast(`已导出 ${items.length} 条书签`);
+      } catch (error) {
+        toast(error.message);
+      }
+    }
+
+    function runLocalAudit() {
+      const groups = {};
+      scanResults = bookmarks.map((item) => {
+        let canonical = item.url;
+        try {
+          const parsed = new URL(item.url);
+          ['utm_source','utm_medium','utm_campaign','utm_term','utm_content','fbclid','gclid'].forEach((key) => parsed.searchParams.delete(key));
+          parsed.hash = '';
+          canonical = parsed.toString().replace(/\/$/, '');
+        } catch (_) {}
+        groups[canonical] = (groups[canonical] || 0) + 1;
+        const insecure = item.url.startsWith('http://');
+        return {
+          ...item,
+          final_url: item.url,
+          canonicalUrl: canonical,
+          status_code: null,
+          state: insecure ? 'client_error' : 'pending',
+          label: insecure ? 'HTTP 明文' : '待联网检查',
+          detail: insecure ? '建议改为 HTTPS 后再收藏' : '本地已完成重复与参数分析',
+          elapsed_ms: 0,
+          redirected: false,
+        };
+      });
+      const duplicates = Object.values(groups).reduce((sum, count) => sum + Math.max(0, count - 1), 0);
+      const insecure = scanResults.filter((item) => item.state === 'client_error').length;
+      const uniqueHealthy = Object.keys(groups).length - insecure;
+      const domains = {};
+      scanResults.forEach((item) => {
+        const host = hostOf(item.url);
+        domains[host] = (domains[host] || 0) + 1;
+      });
+      summary = {
+        total: scanResults.length,
+        healthy: Math.max(0, uniqueHealthy),
+        duplicates,
+        attention: insecure,
+        healthScore: Math.max(0, 100 - duplicates * 8 - insecure * 12),
+        topDomains: Object.entries(domains).sort((a,b) => b[1]-a[1]).slice(0,8).map(([domain,count]) => ({domain,count})),
+      };
+      $('#progress-label').textContent = `本地整理完成 · ${scanResults.length} 条网址`;
+      $('#progress-value').textContent = '100%';
+      $('#progress-fill').style.width = '100%';
+      onlineMode = false;
+      $('#start').disabled = false;
+      renderResults();
+    }
+
+    function buildBookmarkHtml(items) {
+      const escape = (value) => String(value ?? '').replace(/[&<>"']/g, (char) => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[char]));
+      const groups = {};
+      items.forEach((item) => (groups[item.folder || '未分类'] ||= []).push(item));
+      const lines = ['<!DOCTYPE NETSCAPE-Bookmark-file-1>','<META HTTP-EQUIV="Content-Type" CONTENT="text/html; charset=UTF-8">','<TITLE>拾链整理结果</TITLE>','<H1>拾链整理结果</H1>','<DL><p>'];
+      Object.entries(groups).forEach(([folder, rows]) => {
+        lines.push(`<DT><H3>${escape(folder)}</H3>`, '<DL><p>');
+        rows.forEach((item) => lines.push(`<DT><A HREF="${escape(item.url)}">${escape(item.title || item.url)}</A>`));
+        lines.push('</DL><p>');
+      });
+      lines.push('</DL><p>', '');
+      return lines.join('\n');
+    }
+
+    async function detectMode() {
+      try {
+        const response = await fetch(`${API_BASE}/api/health`, { cache: 'no-store' });
+        const type = response.headers.get('Content-Type') || '';
+        if (!response.ok || !type.includes('json')) throw new Error('offline');
+        const data = await response.json();
+        if (!data.ok) throw new Error('offline');
+        onlineMode = true;
+        $('#mode-status').textContent = '在线深检 · 已连接 BFF';
+      } catch (_) {
+        onlineMode = false;
+        $('#mode-status').textContent = '本地整理 · 可离线使用';
+      }
+    }
+
+    $('#file').addEventListener('change', (event) => importFile(event.target.files[0]));
+    $('#dropzone').addEventListener('dragover', (event) => { event.preventDefault(); $('#dropzone').classList.add('drag'); });
+    $('#dropzone').addEventListener('dragleave', () => $('#dropzone').classList.remove('drag'));
+    $('#dropzone').addEventListener('drop', (event) => {
+      event.preventDefault();
+      $('#dropzone').classList.remove('drag');
+      importFile(event.dataTransfer.files[0]);
+    });
+    $('#parse-paste').addEventListener('click', parsePaste);
+    $('#start').addEventListener('click', startScan);
+    $('#sample').addEventListener('click', () => setBookmarks([
+      { title: 'Python 官方网站', url: 'https://www.python.org/', folder: '学习 / 编程' },
+      { title: 'MDN Web Docs', url: 'https://developer.mozilla.org/zh-CN/', folder: '学习 / Web' },
+      { title: 'GitHub', url: 'https://github.com/', folder: '工具' },
+      { title: 'Example Domain', url: 'https://example.com/', folder: '示例' },
+      { title: '不存在的 Python 页面', url: 'https://www.python.org/this-page-does-not-exist-2026', folder: '失效示例' },
+    ], '示例书签'));
+    document.querySelectorAll('.filter').forEach((button) => {
+      button.addEventListener('click', () => {
+        activeFilter = button.dataset.filter;
+        document.querySelectorAll('.filter').forEach((item) => item.classList.toggle('active', item === button));
+        renderTable();
+      });
+    });
+    $('#search').addEventListener('input', renderTable);
+    $('#export-healthy').addEventListener('click', () => exportLinks(true));
+    $('#export-all').addEventListener('click', () => exportLinks(false));
+    detectMode();
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', () => navigator.serviceWorker.register('sw.js').catch(() => {}));
+    }
+  </script>
+</body>
+</html>
